@@ -39,8 +39,12 @@ async def whatsapp_webhook(request):
         return HttpResponse(status=403)
 
     raw = request.body
-    if not verify_signature(raw, request.headers.get("X-Hub-Signature-256")):
-        logger.warning("WhatsApp signature verification failed")
+    sig = request.headers.get("X-Hub-Signature-256")
+    if not verify_signature(raw, sig):
+        logger.warning(
+            "WhatsApp signature verification failed (check WHATSAPP_APP_SECRET matches Meta app; "
+            "or set WHATSAPP_SKIP_SIGNATURE_VERIFY=true in .env for local debug only)"
+        )
         return JsonResponse({"error": "invalid signature"}, status=403)
 
     try:
@@ -49,13 +53,28 @@ async def whatsapp_webhook(request):
         return JsonResponse({"error": "invalid json"}, status=400)
 
     messages = _extract_messages(payload)
+    logger.info(
+        "WhatsApp webhook POST: %s text message(s), object=%s",
+        len(messages),
+        payload.get("object"),
+    )
+    if not messages:
+        logger.info("Webhook payload (no text messages): %s", _payload_summary(payload))
+
     results = []
     for phone, text in messages:
-        result = await process_incoming_message(phone, text)
-        results.append(result)
-
-    if not messages:
-        logger.info("WhatsApp webhook received non-message or status payload")
+        try:
+            result = await process_incoming_message(phone, text)
+            results.append(result)
+            logger.info(
+                "Processed message from %s status=%s whatsapp=%s",
+                phone,
+                result.get("status"),
+                (result.get("whatsapp") or {}).get("status"),
+            )
+        except Exception:
+            logger.exception("Failed processing WhatsApp message from %s", phone)
+            results.append({"status": "error", "phone": phone})
 
     return JsonResponse({"status": "success", "results": results})
 
@@ -95,3 +114,17 @@ def _extract_messages(payload: dict) -> list[tuple[str, str]]:
                 if phone and text:
                     out.append((phone, text))
     return out
+
+
+def _payload_summary(payload: dict) -> dict:
+    """Short summary for logs when no inbound text messages."""
+    summary: dict = {"field_types": []}
+    for entry in payload.get("entry") or []:
+        for change in entry.get("changes") or []:
+            value = change.get("value") or {}
+            summary["field_types"].append(change.get("field"))
+            if value.get("statuses"):
+                summary["statuses"] = len(value["statuses"])
+            for msg in value.get("messages") or []:
+                summary.setdefault("message_types", []).append(msg.get("type"))
+    return summary

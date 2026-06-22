@@ -40,9 +40,25 @@ class WhatsAppClient:
         }
 
         async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(url, json=payload, headers=headers)
-            response.raise_for_status()
-            return response.json()
+            try:
+                response = await client.post(url, json=payload, headers=headers)
+                response.raise_for_status()
+                return response.json()
+            except httpx.HTTPStatusError as exc:
+                body = exc.response.text[:500] if exc.response is not None else ""
+                logger.error(
+                    "WhatsApp send failed status=%s body=%s",
+                    exc.response.status_code if exc.response else "?",
+                    body,
+                )
+                return {
+                    "status": "error",
+                    "http_status": exc.response.status_code if exc.response else None,
+                    "detail": body,
+                }
+            except httpx.HTTPError as exc:
+                logger.exception("WhatsApp send request failed")
+                return {"status": "error", "detail": str(exc)}
 
 
 def get_whatsapp_client() -> WhatsAppClient:

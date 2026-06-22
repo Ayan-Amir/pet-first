@@ -1,6 +1,6 @@
 SHELL=/bin/bash
 
-.PHONY: up up.d down logs test run dev.up dev.up.d dev.down dev.logs dev.migrate dev.createsuperuser
+.PHONY: up up.d down logs test run dev.up dev.up.d dev.down dev.logs dev.migrate dev.createsuperuser dev.webhook-smoke
 
 up:
 	docker compose up --build
@@ -28,6 +28,9 @@ dev.migrate:
 
 dev.createsuperuser:
 	docker compose exec -it django python manage.py createsuperuser
+
+dev.webhook-smoke:
+	curl -s http://127.0.0.1:8000/api/whatsapp/callback/ | python3 -m json.tool
 
 run:
 	python3 -m mock_backend

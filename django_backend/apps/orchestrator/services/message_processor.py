@@ -33,7 +33,9 @@ async def process_incoming_message(phone: str, message: str) -> dict[str, Any]:
         user = await get_user_by_phone(phone)
     except MCPClientError as exc:
         logger.exception("User lookup failed")
-        return {"error": str(exc), "status": "mcp_error"}
+        text = "Sorry, we could not reach our booking system. Please try again shortly."
+        wa = await get_whatsapp_client().send_text_message(phone, text)
+        return {"error": str(exc), "status": "mcp_error", "whatsapp": wa}
 
     if not user:
         text = (

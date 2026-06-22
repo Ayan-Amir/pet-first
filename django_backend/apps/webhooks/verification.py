@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import os
+
 from django.conf import settings
 
 
@@ -14,9 +16,18 @@ def verify_webhook_subscription(mode: str | None, token: str | None, challenge: 
 
 
 def verify_signature(raw_body: bytes, signature_header: str | None) -> bool:
+    if settings.DEBUG and os.getenv("WHATSAPP_SKIP_SIGNATURE_VERIFY", "").lower() in (
+        "1",
+        "true",
+        "yes",
+    ):
+        return True
+
     secret = settings.WHATSAPP_APP_SECRET
-    if not secret or not signature_header:
-        return not secret
+    if not secret:
+        return True
+    if not signature_header:
+        return False
     expected_prefix = "sha256="
     if not signature_header.startswith(expected_prefix):
         return False

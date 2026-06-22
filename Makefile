@@ -1,6 +1,6 @@
 SHELL=/bin/bash
 
-.PHONY: up up.d down logs test run dev.up dev.up.d dev.down dev.logs dev.migrate
+.PHONY: up up.d down logs test run dev.up dev.up.d dev.down dev.logs dev.migrate dev.createsuperuser
 
 up:
 	docker compose up --build
@@ -25,6 +25,9 @@ dev.logs: logs
 
 dev.migrate:
 	docker compose exec django python manage.py migrate
+
+dev.createsuperuser:
+	docker compose exec -it django python manage.py createsuperuser
 
 run:
 	python3 -m mock_backend

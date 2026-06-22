@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 @csrf_exempt
 @require_http_methods(["GET", "POST"])
 async def whatsapp_webhook(request):
+    """Meta WhatsApp Cloud API webhook (GET verify + POST messages)."""
     if request.method == "GET":
         challenge = verify_webhook_subscription(
             request.GET.get("hub.mode"),
@@ -24,6 +25,17 @@ async def whatsapp_webhook(request):
         )
         if challenge is not None:
             return HttpResponse(challenge, content_type="text/plain")
+        if not request.GET.get("hub.mode"):
+            return JsonResponse(
+                {
+                    "status": "ok",
+                    "service": "petsfirst-whatsapp-webhook",
+                    "usage": {
+                        "meta_callback": "Use this URL as WhatsApp webhook callback (GET verify + POST).",
+                        "meta_verify": "GET with hub.mode, hub.verify_token, hub.challenge",
+                    },
+                }
+            )
         return HttpResponse(status=403)
 
     raw = request.body
@@ -41,6 +53,9 @@ async def whatsapp_webhook(request):
     for phone, text in messages:
         result = await process_incoming_message(phone, text)
         results.append(result)
+
+    if not messages:
+        logger.info("WhatsApp webhook received non-message or status payload")
 
     return JsonResponse({"status": "success", "results": results})
 

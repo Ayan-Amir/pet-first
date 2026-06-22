@@ -1,6 +1,16 @@
 from apps.webhooks.verification import verify_signature, verify_webhook_subscription
 
 
+def test_webhook_health_get(client):
+    response = client.get("/api/whatsapp/callback/")
+    assert response.status_code == 200
+    body = response.json()
+    assert body.get("status") == "ok"
+
+
+from apps.webhooks.verification import verify_signature, verify_webhook_subscription
+
+
 def test_webhook_subscription(settings):
     settings.WHATSAPP_VERIFY_TOKEN = "secret"
     assert verify_webhook_subscription("subscribe", "secret", "12345") == "12345"

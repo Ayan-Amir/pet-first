@@ -1,0 +1,9 @@
+[ignore]
+glob = [
+  '*.txt',
+  'migrations/**/*',
+  '*.pyc',
+  '__pycache__/**',
+  '*.po',
+  '*.pot',
+]

@@ -1,0 +1,56 @@
+services:
+  db:
+    image: ankane/pgvector:latest
+    container_name: petsfirst_db
+    environment:
+      POSTGRES_USER: petsfirst
+      POSTGRES_PASSWORD: petsfirst123
+      POSTGRES_DB: petsfirst_db
+    ports:
+      - "5433:5432"  # host 5433 avoids conflict with local Postgres on 5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U petsfirst -d petsfirst_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  mock_api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8020:8020"
+    environment:
+      MOCK_API_PORT: "8020"
+      MOCK_API_PREFIX: "/api/v1.0/mcp"
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+
+  django:
+    build:
+      context: ./django_backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://petsfirst:petsfirst123@db:5432/petsfirst_db
+      MCP_BACKEND_URL: http://mock_api:8020/api/v1.0/mcp
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-openai/gpt-4o-mini}
+    depends_on:
+      db:
+        condition: service_healthy
+      mock_api:
+        condition: service_started
+    volumes:
+      - ./django_backend:/app
+
+volumes:
+  postgres_data:

@@ -1,0 +1,13 @@
+Django>=5.0,<6.0
+djangorestframework>=3.14,<4.0
+pydantic-ai>=0.0.10
+openai>=1.10.0
+httpx>=0.26.0
+psycopg[binary]>=3.1.0
+pgvector>=0.2.5
+python-dotenv>=1.0.0
+dj-database-url>=2.1.0
+pytest>=8.0.0
+pytest-django>=4.8.0
+pytest-asyncio>=0.23.0
+respx>=0.21.0
